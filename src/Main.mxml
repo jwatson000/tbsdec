@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   width="1000"
+					   height="700"
+					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
+					   xmlns:local="*">
+
+
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FileEvent;
+			import mx.events.FlexEvent;
+
+			private var DEFAULT_ASSETS_FOLDER_WINDOWS_x64 : String = "c:/Program Files (x86)/Steam/steamapps/common/tbs/assets";
+			private var DEFAULT_ASSETS_FOLDER_WINDOWS_x86 : String = "c:/Program Files/Steam/steamapps/common/tbs/assets";
+			private var DEFAULT_ASSETS_SUBFOLDER_MAC_OS_X : String = "/Library/Application Support/Steam/SteamApps/common/tbs/assets";
+
+			protected function tree_clickHandler(event : MouseEvent) : void
+			{
+				// TODO Auto-generated method stub
+
+			}
+
+			private var _assetsFolder : File;
+
+			[Bindable]
+			public function get assetsFolder() : File
+			{
+				return _assetsFolder;
+			}
+
+			public function set assetsFolder(value : File) : void
+			{
+				_assetsFolder = value;
+				textDir.text = _assetsFolder ? _assetsFolder.nativePath : "";
+			}
+
+			public function truncateFilename(filename : String) : String
+			{
+				if (_assetsFolder)
+				{
+					if (filename.indexOf(_assetsFolder.nativePath) == 0)
+					{
+						return filename.substring(_assetsFolder.nativePath.length + 1);
+					}
+				}
+
+				return filename;
+			}
+
+			protected function windowedapplication1_creationCompleteHandler(event : FlexEvent) : void
+			{
+				var dirfile : File = findDefaultAssetsFolder();
+				if (dirfile)
+				{
+					assetsFolder = dirfile;
+				}
+				else
+				{
+
+				}
+			}
+
+			private function browseForAssetsDir() : void
+			{
+				var f : File = new File();
+				f.addEventListener(Event.SELECT, folderSelectedHandler);
+				f.browseForDirectory("Locate your TBS assets folder");
+			}
+
+			protected function folderSelectedHandler(event : Event) : void
+			{
+				var f : File = event.target as File;
+				var url : String = f.url;
+				assetsFolder = f;
+				editor.fi = null;
+			}
+
+			private function findDefaultAssetsFolder() : File
+			{
+				var os : String = Capabilities.os;
+				var file : File = null;
+				if (os.indexOf("Windows") == 0)
+				{
+					file = new File(DEFAULT_ASSETS_FOLDER_WINDOWS_x64);
+					if (!file.exists || !file.isDirectory)
+					{
+						file = new File(DEFAULT_ASSETS_FOLDER_WINDOWS_x86);
+					}
+				}
+				else if (os.indexOf("Mac") == 0)
+				{
+					var path : String = File.userDirectory.nativePath;
+					path += DEFAULT_ASSETS_SUBFOLDER_MAC_OS_X;
+					file = new File(path);
+				}
+
+				if (!file.exists || !file.isDirectory)
+				{
+					file = null;
+				}
+
+				return file;
+			}
+
+			public function log(s : String) : void
+			{
+				if (textConsole.text)
+				{
+					textConsole.text += "\n" + s;
+				}
+				else
+				{
+					textConsole.text = s;
+				}
+
+				callLater(scrollLogToEnd);
+			}
+
+			private function scrollLogToEnd() : void
+			{
+				textConsole.verticalScrollPosition = int.MAX_VALUE;
+			}
+
+			public function refreshTree() : void
+			{
+				tree.refresh();
+			}
+
+			protected function tree_fileChooseHandler(event : FileEvent) : void
+			{
+				startEditingFile(event.file);
+			}
+
+			private function startEditingFile(file : File) : void
+			{
+				try
+				{
+					var data : ByteArray = new ByteArray;
+					var fs : FileStream = new FileStream;
+					fs.open(file, FileMode.READ);
+					fs.readBytes(data, 0, 0);
+					fs.close();
+
+					var fi : FileInfo = FileInfo.ctor(file.nativePath, data);
+
+					data.clear();
+
+					editor.fi = fi;
+					editor.enabled = true;
+
+					log("Loaded " + truncateFilename(file.nativePath));
+
+				}
+				catch (e : Error)
+				{
+					log(e.message);
+				}
+			}
+
+			protected function buttonAssetsDir_clickHandler(event : MouseEvent) : void
+			{
+				// TODO Auto-generated method stub
+
+			}
+		]]>
+	</fx:Script>
+
+	<mx:VDividedBox height="100%"
+					width="100%">
+
+		<mx:HDividedBox height="100%"
+						width="100%">
+
+			<mx:FileSystemTree id="tree"
+							   height="100%"
+							   width="300"
+							   directory="{assetsFolder}"
+							   fontFamily="_typewriter"
+							   click="tree_clickHandler(event)"
+							   fileChoose="tree_fileChooseHandler(event)">
+			</mx:FileSystemTree>
+
+			<local:EditorPanel id="editor"
+							   enabled="false"
+							   main="{this}"
+							   width="100%"
+							   height="100%"/>
+		</mx:HDividedBox>
+
+		<s:BorderContainer id="console"
+						   width="100%"
+						   height="100">
+
+			<s:layout>
+				<s:VerticalLayout paddingTop="4"
+								  paddingBottom="4"
+								  paddingLeft="4"
+								  paddingRight="4"/>
+			</s:layout>
+
+			<s:HGroup width="100%">
+				<s:Label text="Assets Dir:"
+						 height="100%"
+						 verticalAlign="middle"/>
+				<s:TextInput id="textDir"
+							 width="100%"
+							 fontFamily="_typewriter"
+							 editable="false"/>
+				<s:Button id="buttonAssetsDir"
+						  label="Change Assets Dir..."
+						  click="buttonAssetsDir_clickHandler(event)"/>
+			</s:HGroup>
+			<mx:TextArea id="textConsole"
+						 width="100%"
+						 height="100%"
+						 fontFamily="_typewriter">
+
+			</mx:TextArea>
+
+		</s:BorderContainer>
+	</mx:VDividedBox>
+
+</s:WindowedApplication>

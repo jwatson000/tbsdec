@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   width="400"
+				   height="300">
+	<s:layout>
+		<s:VerticalLayout paddingTop="4"
+						  paddingBottom="4"
+						  paddingLeft="4"
+						  paddingRight="4"/>
+	</s:layout>
+
+	<fx:Script>
+		<![CDATA[
+			import flash.net.navigateToURL;
+
+			private var _fi : FileInfo;
+
+			[Bindable]
+			public function get fi() : FileInfo
+			{
+				return _fi;
+			}
+
+			public function set fi(value : FileInfo) : void
+			{
+				_fi = value;
+				textEdit.text = _fi ? _fi.text : "";
+				original = textEdit.text;
+				textFilename.text = _fi ? main.truncateFilename(_fi.filename) : "";
+				enabled = _fi != null && _fi.filename;
+				buttonValidate.enabled = _fi && _fi.isJson;
+				buttonSave.enabled = _fi && _fi.isOrig;
+
+			}
+
+			private function saveBackup() : void
+			{
+				if (_fi && _fi.filename)
+				{
+					// save a backup if it is the first time modifying
+					if (_fi.filename.indexOf(".orig") != _fi.filename.length - ".orig".length)
+					{
+						var file : File = new File(_fi.filename);
+						var to : File = new File(_fi.filename + ".orig");
+						if (!to.exists)
+						{
+							file.copyTo(to, false);
+							main.refreshTree();
+						}
+					}
+				}
+			}
+
+			[Bindable]
+			public var main : Main;
+
+			private var original : String;
+
+			private function prepStringOutput() : String
+			{
+				var s : String = textEdit.text;
+				s = s.replace("\r\n", "\n");
+				s = s.replace("\r", "\n");
+				return s;
+			}
+
+			private function prepByteArrayOutput() : ByteArray
+			{
+				if (!fi)
+				{
+					return null;
+				}
+
+				var s : String = prepStringOutput();
+				var data : ByteArray = new ByteArray;
+				if (fi.isJson)
+				{
+					var j : Object = JSON.parse(s);
+					data.writeObject(j);
+				}
+				else
+				{
+					data.writeUTFBytes(s);
+				}
+
+				if (fi.isCompressed)
+				{
+					data.compress();
+				}
+
+				return data;
+			}
+
+			protected function buttonSave_clickHandler(event : MouseEvent) : void
+			{
+				if (!fi || !fi.filename)
+				{
+					return;
+				}
+
+				try
+				{
+					saveBackup();
+
+					var data : ByteArray = prepByteArrayOutput();
+					var fo : File = new File(fi.filename);
+					var fs : FileStream = new FileStream();
+					fs.open(fo, FileMode.WRITE);
+					fs.writeBytes(data);
+					fs.close();
+					data.clear();
+
+					original = textEdit.text;
+					buttonSave.enabled = false;
+
+					main.log("SAVED: " + main.truncateFilename(fi.filename));
+				}
+				catch (e : Error)
+				{
+					main.log("ERROR: " + e);
+				}
+
+			}
+
+			protected function buttonValidate_clickHandler(event : MouseEvent) : void
+			{
+				Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, textEdit.text);
+				var ur : URLRequest = new URLRequest("http://jsonformatter.curiousconcept.com/");
+				navigateToURL(ur);
+			}
+
+			protected function textEdit_changeHandler(event : Event) : void
+			{
+				if (fi)
+				{
+					var b : String = textEdit.text;
+					buttonSave.enabled = original != b;
+				}
+				else
+				{
+					buttonSave.enabled = false;
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:TextInput id="textFilename"
+				 fontFamily="_typewriter"
+				 width="100%"
+				 editable="false"/>
+
+	<s:BorderContainer id="buttonBar"
+					   width="100%">
+
+		<s:layout>
+			<s:HorizontalLayout paddingTop="4"
+								paddingBottom="4"
+								paddingLeft="4"
+								paddingRight="4"/>
+		</s:layout>
+		<s:Button id="buttonSave"
+				  label="Save"
+				  enabled="false"
+				  click="buttonSave_clickHandler(event)"/>
+		<s:Button id="buttonValidate"
+				  label="Validate JSON"
+				  enabled="false"
+				  click="buttonValidate_clickHandler(event)"/>
+	</s:BorderContainer>
+	<mx:TextArea id="textEdit"
+				 fontFamily="_typewriter"
+				 change="textEdit_changeHandler(event)"
+				 width="100%"
+				 height="100%">
+
+	</mx:TextArea>
+</s:BorderContainer>
