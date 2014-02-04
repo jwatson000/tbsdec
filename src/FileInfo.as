@@ -2,11 +2,14 @@ package
 {
 	import flash.utils.ByteArray;
 
+	import engine.subtitle.SubtitleSequence;
+
 	public class FileInfo
 	{
 		public var filename : String;
 		public var text : String;
 		public var isJson : Boolean;
+		public var isSbv : Boolean;
 		public var isCompressed : Boolean;
 		public var isOrig : Boolean;
 
@@ -14,6 +17,7 @@ package
 		private static var SUFFIX_CLIP : String = ".clip";
 		private static var SUFFIX_TXT : String = ".txt";
 		private static var SUFFIX_JSON : String = ".json";
+		private static var SUFFIX_SBV : String = ".sbv";
 		private static var SUFFIX_ORIG : String = ".orig";
 
 		public function FileInfo()
@@ -23,6 +27,7 @@ package
 		public static function ctor(url : String, data : ByteArray) : FileInfo
 		{
 			var fi : FileInfo = new FileInfo;
+			var jo : Object;
 
 			if (url.indexOf(SUFFIX_ORIG) == (url.length - SUFFIX_ORIG.length))
 			{
@@ -56,8 +61,18 @@ package
 				url.indexOf(SUFFIX_CLIP) == (url.length - SUFFIX_CLIP.length))
 			{
 				fi.isJson = true;
-				var jo : Object = data.readObject();
+				jo = data.readObject();
 				fi.text = StableJson.stringify(jo, null, "  ");
+				return fi;
+			}
+
+			if (url.indexOf(SUFFIX_SBV) == (url.length - SUFFIX_SBV.length))
+			{
+				fi.isSbv = true;
+
+				jo = data.readObject();
+				var sbs : SubtitleSequence = new SubtitleSequence().fromJson(jo);
+				fi.text = sbs.toSbv();
 				return fi;
 			}
 

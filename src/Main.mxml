@@ -162,8 +162,7 @@
 
 			protected function buttonAssetsDir_clickHandler(event : MouseEvent) : void
 			{
-				// TODO Auto-generated method stub
-
+				browseForAssetsDir();
 			}
 		]]>
 	</fx:Script>

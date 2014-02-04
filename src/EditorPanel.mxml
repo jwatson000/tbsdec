@@ -15,6 +15,8 @@
 		<![CDATA[
 			import flash.net.navigateToURL;
 
+			import engine.subtitle.SubtitleSequence;
+
 			private var _fi : FileInfo;
 
 			[Bindable]
@@ -61,8 +63,8 @@
 			private function prepStringOutput() : String
 			{
 				var s : String = textEdit.text;
-				s = s.replace("\r\n", "\n");
-				s = s.replace("\r", "\n");
+				s = s.replace(/\r\n/g, "\n");
+				s = s.replace(/\r/g, "\n");
 				return s;
 			}
 
@@ -75,9 +77,17 @@
 
 				var s : String = prepStringOutput();
 				var data : ByteArray = new ByteArray;
-				if (fi.isJson)
+				var j : Object;
+
+				if (fi.isSbv)
 				{
-					var j : Object = JSON.parse(s);
+					var sbs : SubtitleSequence = new SubtitleSequence().fromSbv(s);
+					j = sbs.toJson();
+					data.writeObject(j);
+				}
+				else if (fi.isJson)
+				{
+					j = JSON.parse(s);
 					data.writeObject(j);
 				}
 				else
